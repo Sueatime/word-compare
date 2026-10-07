@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Word Compare</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--h:230;--bg:hsl(var(--h) 45% 96%);--ink:hsl(var(--h) 50% 18%);--dark:hsl(var(--h) 48% 42%);--light:hsl(var(--h) 70% 84%);--lightink:hsl(var(--h) 50% 18%);--muted:hsl(var(--h) 20% 42%);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:hsl(var(--h) 35% 12%);--ink:hsl(var(--h) 60% 95%);--dark:hsl(var(--h) 50% 52%);--light:hsl(var(--h) 65% 80%);--lightink:hsl(var(--h) 50% 14%);--muted:hsl(var(--h) 25% 70%)}}
+:root[data-theme="dark"]{--bg:hsl(var(--h) 35% 12%);--ink:hsl(var(--h) 60% 95%);--dark:hsl(var(--h) 50% 52%);--light:hsl(var(--h) 65% 80%);--lightink:hsl(var(--h) 50% 14%);--muted:hsl(var(--h) 25% 70%)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Outfit",system-ui,sans-serif;display:flex;justify-content:center}
+main{width:100%;max-width:480px;padding:24px 16px 40px;text-align:center}
+h1{margin:0 0 4px;font-size:28px;font-weight:700}
+.sub{margin:0 0 24px;color:var(--muted);font-size:15px}
+.row{display:flex;align-items:center;justify-content:center;gap:2px}
+.tile{width:clamp(44px,13vw,58px);height:clamp(44px,13vw,58px);border-radius:8px;display:grid;place-items:center;font-size:24px;font-weight:700}
+.c{background:var(--dark);color:#fff}
+.v{background:var(--light);color:var(--lightink)}
+.hid{opacity:.55;font-weight:400}
+.sym{width:clamp(18px,5vw,26px);font-size:22px;font-weight:700;color:var(--muted)}
+#board{margin-bottom:22px}
+.abc{margin-bottom:22px;display:flex;flex-direction:column;gap:4px;align-items:center}
+.abc .row{gap:3px}
+.abc .tile{width:clamp(22px,6.4vw,30px);height:clamp(26px,7vw,32px);font-size:15px;border-radius:5px}
+.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 16px;font-size:13px;color:var(--muted);margin-bottom:22px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:14px;border-radius:4px;display:inline-block}
+.entry{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
+input{font:inherit;font-size:20px;letter-spacing:4px;text-transform:uppercase;width:150px;padding:10px;border-radius:8px;border:2px solid var(--dark);background:transparent;color:var(--ink);text-align:center}
+button{font:inherit;font-weight:600;padding:10px 18px;border-radius:8px;border:0;background:var(--dark);color:#fff;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--light);outline-offset:2px}
+#msg{min-height:24px;margin:0 0 16px;font-weight:600}
+.hist{margin-bottom:8px}
+.hist .tile{width:36px;height:36px;font-size:18px;border-radius:6px}
+.hist .tile.wrong{background:transparent;color:var(--ink);border:2px solid var(--muted);font-weight:400}
+.tile.right{font-weight:800;outline:3px solid var(--ink);outline-offset:-3px}
+.hist .sym{width:8px}
+.streak{margin:-12px 0 20px;font-weight:600;font-size:15px}
+#confetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:10}
+.left{color:var(--muted);font-size:14px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Word Compare</h1>
+  <p class="sub">Each symbol compares a letter with the next one by alphabet order (A is smallest, Z is biggest).</p>
+  <p class="streak" id="streak"></p>
+  <div class="abc" id="abc" aria-label="Alphabet reference"></div>
+  <div id="board" class="row" aria-label="Secret word"></div>
+  <div class="legend">
+    <span><i style="background:var(--dark)"></i>consonant</span>
+    <span><i style="background:var(--light)"></i>vowel</span>
+    <span><b>&lt;</b> smaller than</span>
+    <span><b>&gt;</b> bigger than</span>
+    <span><b>=</b> equal</span>
+  </div>
+  <div class="entry">
+    <input id="g" maxlength="6" autocomplete="off" autocapitalize="characters" aria-label="Your guess">
+    <button id="go">Guess</button>
+  </div>
+  <p id="msg" role="status"></p>
+  <div class="left" id="left"></div>
+  <div id="hist"></div>
+  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+    <button id="new" style="background:transparent;color:var(--ink);border:2px solid var(--muted)">New word</button>
+    <button id="giveup" style="background:transparent;color:var(--ink);border:2px solid var(--muted)">Give up</button>
+  </div>
+</main>
+<script>
+const W4="PLAN WORD GAME LOVE TREE BOOK FISH MOON STAR RAIN SNOW WIND FIRE LAKE ROAD HAND FOOT HEAD DOOR WALL ROOM BIRD FROG BEAR LION DUCK CAKE MILK RICE SOUP CORN PEAR PLUM LIME SONG DRUM BELL KING SHIP BOAT CITY TOWN FARM HILL SAND WAVE CLAY IRON GOLD SILK WOOL GIFT MAIL NOTE PAGE LAMP DESK ROSE LEAF SEED FOOD MOOD POOL COOL MEET FEEL BALL TOLL".split(" ");
+const W5="PLANT CRANE STONE BRAIN CLOUD FLAME GRAPE HOUSE LIGHT MONEY NIGHT OCEAN PAINT QUIET RIVER SMILE TABLE WATER YOUNG ANGEL BEACH CHAIR DREAM EARTH FIELD GLASS HEART JUICE KNIFE LEMON MUSIC NORTH PIANO QUEEN ROUND SUGAR TRAIN UNDER VOICE WORLD BREAD CANDY DANCE EAGLE FRUIT GHOST HONEY LUNCH MOUNT PEACH SHEEP TIGER WHEAT ZEBRA STORM BLEND CRISP DRIFT FROST GRAIN SPARK SWEET APPLE HAPPY GRASS SMALL SPEED GREEN WHEEL STEEL FLOOR CROSS DRESS".split(" ");
+const W6="GARDEN SILVER BRIDGE CASTLE FLOWER FOREST ISLAND JUNGLE LADDER MARKET NATURE ORANGE PLANET RABBIT SUMMER WINTER YELLOW BASKET CANDLE DINNER FRIEND GUITAR HAMMER INSECT JACKET KITTEN MIRROR NEEDLE PENCIL POCKET SCHOOL SPIRIT TICKET VALLEY WINDOW BUTTER CIRCLE DOCTOR ENGINE FINGER GOLDEN LISTEN MOMENT ACCESS COFFEE GOSSIP BUTTON LETTER MIDDLE BATTLE BOTTLE PUZZLE".split(" ");
+const BYLEN={4:W4,5:W5,6:W6};
+const isV=ch=>"AEIOU".includes(ch);
+const tile=(ch,extra="")=>`<div class="tile ${isV(ch)?"v":"c"} ${extra}">${ch}</div>`;
+const sym=(a,b)=>a===b?"=":(a>b?">":"<");
+document.getElementById("abc").innerHTML=["ABCDEFGHIJKLM","NOPQRSTUVWXYZ"].map(r=>`<div class="row">${[...r].map(c=>tile(c)).join("")}</div>`).join("");
+let secret,locked,tries,over,n,hue=-1;
+let streak=0,best=0;
+try{streak=+localStorage.getItem("wc_streak")||0;best=+localStorage.getItem("wc_best")||0}catch(e){}
+function saveStreak(){try{localStorage.setItem("wc_streak",streak);localStorage.setItem("wc_best",best)}catch(e){}}
+function showStreak(){document.getElementById("streak").textContent=`Streak: ${streak}  |  Best: ${best}`}
+function draw(){
+  let h="";
+  for(let i=0;i<n;i++){
+    h+=locked[i]?tile(locked[i],"right"):`<div class="tile ${isV(secret[i])?"v":"c"} hid">?</div>`;
+    if(i<n-1)h+=`<div class="sym">${sym(secret[i],secret[i+1])}</div>`;
+  }
+  document.getElementById("board").innerHTML=h;
+  document.getElementById("left").textContent=over?"":`${n}-letter word. Guesses so far: ${tries}`;
+}
+function start(abandon){
+  if(abandon&&!over&&tries>0){streak=0;saveStreak()}
+  const HUES=[0,15,155,180,205,230,260,285,320];
+  let h;do{h=HUES[Math.floor(Math.random()*HUES.length)]}while(h===hue);
+  hue=h;document.documentElement.style.setProperty("--h",h);
+  n=4+Math.floor(Math.random()*3);
+  const list=BYLEN[n];
+  secret=list[Math.floor(Math.random()*list.length)];
+  locked=Array(n).fill(null);tries=0;over=false;
+  document.getElementById("hist").innerHTML="";
+  document.getElementById("msg").textContent="";
+  document.getElementById("g").value="";
+  document.getElementById("g").maxLength=n;
+  showStreak();draw();document.getElementById("g").focus();
+}
+function confetti(){
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+  const c=document.createElement("canvas");c.id="confetti";c.width=innerWidth;c.height=innerHeight;document.body.append(c);
+  const x=c.getContext("2d"),cols=[0,45,150,200,260,320].map(h=>`hsl(${h} 85% 55%)`);
+  const ps=Array.from({length:150},()=>({x:innerWidth/2+(Math.random()-.5)*160,y:innerHeight*.35,vx:(Math.random()-.5)*15,vy:-Math.random()*13-4,s:6+Math.random()*6,r:Math.random()*6,vr:(Math.random()-.5)*.4,c:cols[Math.floor(Math.random()*cols.length)]}));
+  let t=0;
+  (function f(){
+    x.clearRect(0,0,c.width,c.height);t++;
+    ps.forEach(p=>{p.vy+=.35;p.x+=p.vx;p.y+=p.vy;p.vx*=.99;p.r+=p.vr;x.save();x.translate(p.x,p.y);x.rotate(p.r);x.fillStyle=p.c;x.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6);x.restore()});
+    if(t<160)requestAnimationFrame(f);else c.remove();
+  })();
+}
+function guess(){
+  if(over)return;
+  const inp=document.getElementById("g"),msg=document.getElementById("msg");
+  const w=inp.value.toUpperCase().trim();
+  if(!new RegExp(`^[A-Z]{${n}}$`).test(w)){msg.textContent=`Type exactly ${n} letters.`;return}
+  tries++;let won=false;
+  let row="";
+  for(let i=0;i<n;i++){
+    const ok=w[i]===secret[i];
+    if(ok)locked[i]=w[i];
+    row+=tile(w[i],ok?"right":"wrong");
+  }
+  document.getElementById("hist").insertAdjacentHTML("afterbegin",`<div class="row hist">${row}</div>`);
+  inp.value="";
+  if(w===secret){over=true;streak++;if(streak>best)best=streak;saveStreak();msg.textContent=`You got it in ${tries}!`;won=true}
+  else msg.textContent="Bold coloured letters are in the right spot. Plain letters may still fit in other tiles.";
+  showStreak();draw();
+  if(won){confetti()}
+}
+document.getElementById("go").onclick=guess;
+document.getElementById("g").onkeydown=e=>{if(e.key==="Enter")guess()};
+document.getElementById("new").onclick=()=>start(true);
+document.getElementById("giveup").onclick=()=>{
+  if(over)return;
+  over=true;streak=0;saveStreak();locked=secret.split("");
+  document.getElementById("msg").textContent=`You gave up. The word was ${secret}.`;
+  showStreak();draw();
+};
+start(false);
+</script>
+</body>
+</html>
